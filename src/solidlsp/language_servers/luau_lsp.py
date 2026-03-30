@@ -38,13 +38,13 @@ from solidlsp.settings import SolidLSPSettings
 log = logging.getLogger(__name__)
 
 # Pin to a known stable release
-LUAU_LSP_VERSION = "1.63.0"
+LUAU_LSP_VERSION = "v0.1.15"
 LUAU_LSP_ALLOWED_HOSTS = ("github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com")
 LUAU_LSP_SHA256_BY_ASSET = {
-    "luau-lsp-linux-x86_64.zip": "e4b633ad9a2c15437f60f9e721263f79aa0da606867d8458f0e159a325bf2db8",
-    "luau-lsp-linux-arm64.zip": "355be010f337a6772df6255c92e1fb28a59d194abe5c570453f4186472244355",
-    "luau-lsp-macos.zip": "01c1d6dd5fee27295b2968915dabb08c192192c46d9fe9c97bf31a130c96b8cb",
-    "luau-lsp-win64.zip": "eea596d47dc1c94a61ba1b78e6472bb4445bc3309780751515e6ab0a0abba57d",
+    "luau-lsp-linux-x86_64.zip": "sha256:21ebf71e549b3de4d751e91308e732cdcdf3966b633bc268d9a6f03853cd80f4",
+    "luau-lsp-linux-arm64.zip": "sha256:fbfe2c46fe34b864684f5f77efcd3cc69c67f9372f997436f7b79c8418d53967",
+    "luau-lsp-macos.zip": "sha256:1174b1f80d99edd587aab31a51396a6b1bd26f02ced2d7407241ff29e7cc3ac5",
+    "luau-lsp-win64.zip": "sha256:8edabe1b4b137b02e184f554ca2624cb5a63fe90e6e864c72d9fc6bf44763ce7",
 }
 
 # Luau built-in docs CDN
@@ -107,7 +107,7 @@ class LuauLanguageServer(SolidLanguageServer):
 
             luau_lsp_version = self._custom_settings.get("luau_lsp_version", LUAU_LSP_VERSION)
             asset_name = self._get_luau_lsp_asset_name()
-            download_url = f"https://github.com/JohnnyMorganz/luau-lsp/releases/download/{luau_lsp_version}/{asset_name}"
+            download_url = f"https://github.com/Sawhorse-Interactive/luau-lsp-carpenter/releases/download/{luau_lsp_version}/{asset_name}"
 
             log.info("Downloading luau-lsp %s from %s", luau_lsp_version, download_url)
             FileUtils.download_and_extract_archive_verified(
