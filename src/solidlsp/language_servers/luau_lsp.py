@@ -38,13 +38,13 @@ from solidlsp.settings import SolidLSPSettings
 log = logging.getLogger(__name__)
 
 # Pin to a known stable release
-LUAU_LSP_VERSION = "v0.1.15"
+LUAU_LSP_VERSION = "v0.1.16"
 LUAU_LSP_ALLOWED_HOSTS = ("github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com")
 LUAU_LSP_SHA256_BY_ASSET = {
-    "luau-lsp-linux-x86_64.zip": "sha256:21ebf71e549b3de4d751e91308e732cdcdf3966b633bc268d9a6f03853cd80f4",
-    "luau-lsp-linux-arm64.zip": "sha256:fbfe2c46fe34b864684f5f77efcd3cc69c67f9372f997436f7b79c8418d53967",
-    "luau-lsp-macos.zip": "sha256:1174b1f80d99edd587aab31a51396a6b1bd26f02ced2d7407241ff29e7cc3ac5",
-    "luau-lsp-win64.zip": "sha256:8edabe1b4b137b02e184f554ca2624cb5a63fe90e6e864c72d9fc6bf44763ce7",
+    "luau-lsp-linux-x86_64.zip": "sha256:72731483bfb3a0136d23d9723d47f9fd4b9a37973928cba617d8a7e41b4a77f6",
+    "luau-lsp-linux-arm64.zip": "sha256:b3ad856beaa83aaaf20e7f27a20e895ead77ff4d861f56dd5f8359723fe11123",
+    "luau-lsp-macos.zip": "sha256:d48482c13da6c613ba714afa4fba8a4d24b2ade5cc6c2386d4f13060279855d4",
+    "luau-lsp-win64.zip": "sha256:8a863d4caaf20da4da235c2313a10b25c8cfa750e1d588efe3435e213ac3635a",
 }
 
 # Luau built-in docs CDN
