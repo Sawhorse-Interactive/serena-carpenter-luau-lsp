@@ -353,13 +353,35 @@ class SolidLanguageServer(ABC):
     DOCUMENT_SYMBOL_CACHE_VERSION = 4
     DOCUMENT_SYMBOL_CACHE_FILENAME = "document_symbols.pkl"
 
+    # Directories that should always be ignored regardless of language:
+    # VCS internals, virtual environments, caches, and serena's own data.
+    _ALWAYS_IGNORED_DIRS = frozenset(
+        {
+            ".git",
+            ".svn",
+            ".hg",
+            ".bzr",  # VCS
+            ".venv",
+            ".env",  # virtual environments
+            ".cache",
+            ".mypy_cache",
+            ".pytest_cache",
+            ".ruff_cache",  # caches
+            ".tox",
+            ".nox",  # test runners
+            ".idea",  # IDE internals
+            ".serena",  # serena's own data
+            ".vscode",  # Doesn't contain symbols
+        }
+    )
+
     # To be overridden and extended by subclasses
     def is_ignored_dirname(self, dirname: str) -> bool:
         """
         A language-specific condition for directories that should always be ignored. For example, venv
         in Python and node_modules in JS/TS should be ignored always.
         """
-        return dirname.startswith(".")
+        return dirname in self._ALWAYS_IGNORED_DIRS
 
     @staticmethod
     def _determine_log_level(line: str) -> int:
@@ -1309,9 +1331,12 @@ class SolidLanguageServer(ABC):
                 {"textDocument": {"uri": pathlib.Path(os.path.join(self.repository_root_path, relative_file_path)).as_uri()}}
             )
 
-            # update cache
-            self._raw_document_symbols_cache[cache_key] = (fd.content_hash, response)
-            self._raw_document_symbols_cache_is_modified = True
+            # Only cache non-empty results. An empty or None response can occur when the language server
+            # has not yet finished indexing or building the project (e.g. Lean 4 before `lake build`),
+            # and caching it would permanently serve stale data even after the project is ready.
+            if response:
+                self._raw_document_symbols_cache[cache_key] = (fd.content_hash, response)
+                self._raw_document_symbols_cache_is_modified = True
 
             return response
 
