@@ -3,19 +3,103 @@
 Status of the `main` branch. Changes prior to the next official version change will appear here.
 
 * General:
-  - Support `serena --version` CLI command for displaying the current version #1347
+  - Breaking change in mode definitions: Projects (project.yml) can no longer override `base_modes`.
+    Instead, they can define `added_modes` to add modes on top of base and default modes.  
+    See updated [documentation on modes](https://oraios.github.io/serena/02-usage/050_configuration.html#modes).
+  - Serena's default configuration now uses `interactive` and `editing` as `base_modes` instead of as `default_modes`. 
+  
+* JetBrains:
+  - Add new tools:
+    - `jet_brains_list_inspections`: Lists available IDE inspections (akin to diagnostics), optionally filtered by language or group
+    - `jet_brains_run_inspections`: Runs IDE inspections on a file and returns the results
+
+* LSP Backend:
+  - Add cross-package reference support via `additional_workspace_folders` setting (currently implemented for TypeScript).
+  - Add new tools:
+    - `find_declaration`: Finds the declaration/definition of a symbol
+    - `find_implementations`: Finds the implementations of an interface or abstract method
+    - `get_diagnostics_for_file`: Retrieves diagnostics for a specific file (errors, warnings, etc.)
+    - `get_diagnostics_for_symbol`: Retrieves diagnostics pertaining to a specific symbol
+
+* Language Servers:
+  - Elixir (`elixir-tools/next-ls`): Fix deadlock in monorepo projects where `mix.exs` lives in a subdirectory. The server now searches immediate subdirectories when no `mix.exs` is found at the repository root. #1444
+  - Java (`eclipse.jdt.ls`): Add upstream JDTLS mode for offline / restricted-network use. Setting both `jdtls_path` and `lombok_path` in `ls_specific_settings.java` makes Serena use an existing upstream JDTLS installation (e.g. `brew install jdtls`) and the system JDK 21+, skipping the ~500 MB vscode-java VSIX, Gradle, and IntelliCode downloads. New related setting `java_home` lets the user override the JDK used to launch JDTLS. Default behavior unchanged — the JDTLS workspace hash is preserved bit-for-bit for users on the default route, so existing project caches are reused without a one-time reindex; the launcher path is mixed into the hash only when `jdtls_path` is set, isolating upstream installations from the default workspace. #1415
+  - Java (eclipse.jdt.ls): Lombok-generated methods (getters/setters, builder(), equals/hashCode/toString, etc.) are now included in symbol-based tools (find_symbol, get_symbols_overview, edits). Added lombok_show_generated setting (default: on) to toggle this. Updated bundled vscode-java to 1.54.0-923. Issue #1432.
+  - Add **Angular** (experimental) via a dual-server architecture: `@angular/language-server` (ngserver) handles standalone `.html` template files, while a companion `typescript-language-server` with `@angular/language-service` loaded as a tsserver plugin handles all `.ts` operations including inline templates. Provides type-aware navigation between templates and component classes. Requires Node.js, npm, and `@angular/core` installed in the project (`npm install` in the project root). Subsumes `typescript`+`html` for `.ts`/`.html` files when active; SCSS is not subsumed.
+  - Add **HTML** (experimental) using `vscode-html-language-server` from the `vscode-langservers-extracted` npm package. Provides in-file element/id symbols via documentSymbol; cross-file references are not meaningful for HTML. Also used as a companion server by the Angular LS for plain HTML documentSymbol support.
+  - Add **SCSS / Sass / CSS** (experimental) using [some-sass-language-server](https://github.com/wkillerud/some-sass). Handles `.scss`, `.sass`, and `.css` through one server, with full `@use`/`@forward` workspace-wide go-to-definition and find-references for variables, mixins, and functions across Sass files. The `.css` path uses the same `vscode-css-languageservice` engine that powers the standalone CSS LS; CSS feature toggles default off upstream and are flipped on at startup so symbols, hover, completion, and syntax-level diagnostics work for plain CSS as well.
+  - Add support for more filenames to be considered by ccls and clangd.
+  - Clojure (`clojure-lsp`): Fix incomplete `find_referencing_symbols` results in multi-module monorepos. clojure-lsp only discovers source paths from the descriptor at the workspace root and does not recurse for sub-module `deps.edn` / `project.clj` / `shadow-cljs.edn` / `bb.edn` files, so references in sibling modules were silently missed until those files happened to be opened by `find_symbol` / `get_symbols_overview`. Serena now scans the repo for project descriptors at startup and passes the union of their declared source paths to clojure-lsp via `initializationOptions`. Project-local `.lsp/config.edn` files are honoured as-is (no override). New `ls_specific_settings.clojure` keys: `source_paths` (explicit override) and `config_edn_path` (parse `:source-paths` from a user-supplied config file).
+
+* Hooks:
+  - `serena-hooks auto-approve` now also emits an `allow` decision when Claude Code reports
+    `permission_mode == "auto"`, in addition to the existing `acceptEdits` behavior. #1386
+  - Extension: heuristics for parsing commands and firing a hook on too many greps or reads. Important for clients that, unlike claude code, don't have dedicated grep/read tools.
+  - Read hook now only fires on reads of code files (using heuristics to parse the read command string)
+
+# v1.2.0 (2026-04-27)
+
+* General:
   - Fix: Check for ignored path ignored `.git` folder only at the top level, not in every subdirectory (`Project._is_ignored_relative_path`) #1350
+  - `GetSymbolsOverviewTool`: ignored paths were not respected in LSP variant (fix in `SolidLanguageServer`)
   - Fix: Duplicate comments in re-saved YAML configuration files #1285
+  - Prompt provision improvements (project activation, initial instructions):
+     - Prompt provision is now session-aware, i.e. when using the MCP server in HTTP mode, prompts are provided for each session separately, 
+       ensuring that the necessary information is always provided to the LLM
+     - Fix: Prompts of dynamically activated modes (upon project activation) were not necessarily passed to the LLM (only in the system prompt via
+       `initial_instructions`). Now they are passed directly in the activation message (and excluded from a subsequent `initial_instructions` call).
+     - Fix: Project activation message was provided more than once for case of dynamic project activation followed
+       by `initial_instructions` #1372
+     - Always provide full activation message upon calling `activate_project` (even if project was already active in the same session) #1384
+       This is necessary, because some clients (e.g. Claude Desktop) will reuse a single session across chats.
+  - Security: Forbid `".."` in memory names to disallow accessing files outside dedicated memory directories
+  - Security: Add check for tool being read-only in the project server (previously only checked in `query_project` tool, i.e. client side)
+  - Usage reporting now also includes the name of the Serena context that is used 
+  - Fix: restricted `insert_after_symbol` to raise if used on an assignment or similar (can't reliably determine the symbol range)
+  - Fix: Failure to collect project ignore spec now logs the error and downstream tasks fail fast, fixing hanging LS initialisation
+  - Improve loading of `project.yml` files: Gracefully handle user errors involving incorrect use of None/empty instead of list
+  - Project server: 
+     - `query_project`: Support use of project root instead of project name #1388
+     - `list_queryable_projects`: Return both project names and project roots 
+  - Fix: `search_for_pattern` tool returned 1-based line numbers (in contrast to all other tools); cause: implementation of `text_utils.search_text`
+  - Serena's system prompt (a.k.a. the 'Serena Instructions Manual') is now provided lazily. 
+    At MCP connection time, only a one-sentence bootstrap prompt is provided.
+    The `initial_instructions` tool provides the full prompt on demand, keeping the initial context lean.
+  - Add `serena_info` tool for on-demand retrieval of usage information
+
+* CLI:
+  - Support `serena --version` CLI command for displaying the current version #1347
+  - Extend `prompts` subcommand with `print-prompt-template` and `print-cc-system-prompt-override`, improve `list` subcommand
+
+* Clients:
+  - Document workaround to make Claude Code use Serena's tools after recent degradations caused by changes in CC harness and Opus 4.7 release.
+
+* JetBrains:
+  - Add `debug` tool: The agent can set breakpoints, inspect variables, evaluate expressions and control execution flow
+    by directly interacting with the IDE's debugger, using a REPL-style interface for maximum flexibility.  
+  - `move` and `safe_delete` tools: transform empty string to None (counteracts client errors)
 
 * Dependencies:
   - `pywebview`: Switch back to official release (new version 6.2) #1253
+  - `mcp`: Update from `1.26.0` to `1.27.0`
 
+* Evaluations:
+  - Added new evaluations for Junie Plugin with Opus 4.6 and GLM 5.1 in Claude Code.
 
 * Language Servers:
   - Fix: clangd capability checks now tolerate valid initialize response shape differences and invalidate cached C++ document symbols when clangd/compile commands context changes #1359                                                                                                                                                                                                            
   - Fix: `rename_symbol` for Vue files now correctly propagates edits to the TypeScript server, enabling cross-file renames in `.vue` files 
   - Fix: Lean4 stale cache — empty document symbol responses (returned before `lake build` completes) are no longer persisted, preventing symbols from being permanently hidden #1356
+  - Add JSON language server support via `vscode-json-languageserver` (experimental) #1391
+  - Fix: Elixir/Expert deadlock on startup — Expert's build pipeline requires a `textDocument/didOpen` notification to start; Serena now opens `mix.exs` immediately after `initialized` so Expert begins compiling instead of waiting indefinitely #1397
 
+* Dashboard:
+  - Add configurable dashboard interface mode (new global configuration setting `web_dashboard_interface`):
+    Three modes (browser, native app with tray, tray manager for aggregating multiple instances) are supported, depending on the OS
+  - Fix: Memory leaks in frontend when using Chromium-based browsers/Windows webview #1389
+
+* Hooks:
+  - Adjusted wording of startup hook, improving project activation instructions #1401.
 
 # v1.1.2 (2026-04-14)
 
@@ -27,10 +111,10 @@ Status of the `main` branch. Changes prior to the next official version change w
   - Fix: When scanning for `.gitignore` files, the presence of files that could not be made relative 
     to the project root would cause the scan to fail. #1317
 
-Dashboard:
+* Dashboard:
   - Fix handling of read news, saving each read news entry separately #1338
 
-JetBrains: 
+* JetBrains: 
   - Improve handling of `relative_path` parameter 
      - Improve its documentation to avoid usage errors
      - Replace escaped characters in `relative_path` with their unescaped counterparts (&lt; and &gt;)
