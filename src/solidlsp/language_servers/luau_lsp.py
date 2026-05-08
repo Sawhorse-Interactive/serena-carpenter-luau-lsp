@@ -37,6 +37,8 @@ from solidlsp.settings import SolidLSPSettings
 
 log = logging.getLogger(__name__)
 
+LUAU_LSP_ALLOWED_HOSTS = ("github.com", "release-assets.githubusercontent.com", "objects.githubusercontent.com")
+
 # Version pinning convention (see eclipse_jdtls.py for the full spec):
 #   INITIAL_* — frozen forever; legacy unversioned install dir is reserved for it.
 #   DEFAULT_* — bumped on upgrades; goes into a versioned subdir.
@@ -54,6 +56,7 @@ DEFAULT_LUAU_LSP_SHA256_BY_ASSET = {
     "luau-lsp-macos.zip": "26ad04b5710065fb17e2600ab8e2436575c391d972ff1bb499cb2711d14d591d",
     "luau-lsp-win64.zip": "2aed1a1cf25c9cfc538b7accccceb40b525529041fc0b9c67ac65ac292d1fa7d",
 }
+
 
 def _luau_lsp_sha(version: str, asset_name: str) -> str | None:
     if version == INITIAL_LUAU_LSP_VERSION:
